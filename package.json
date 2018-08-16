@@ -3,8 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "bn.js": "^4.11.8",
     "bootstrap": "^4.1.1",
     "connected-react-router": "^4.3.0",
+    "eth-events": "^0.1.1",
     "ethjs": "^0.4.0",
     "flexbox": "0.0.3",
     "link-react": "^3.0.0",

@@ -11,6 +11,12 @@ export const MarginDiv = styled.div`
   overflow: hidden;
 `
 
+export const TableWrapper = styled.div`
+  margin: 2em;
+  padding: 2em;
+  overflow: hidden;
+  width: min-content;
+`
 export const MarginalDiv = styled.div`
   margin: 2em 0;
   overflow: hidden;

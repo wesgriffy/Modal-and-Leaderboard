@@ -38,7 +38,7 @@ class App extends Component {
       applicationSubmittedModal: false,
       applicationChallengedModal: false,
       listingChallengedModal: false,
-      dataArray: [],
+      addressBalances: [],
       open: false,
     };
 
@@ -47,7 +47,6 @@ class App extends Component {
     this.closeModal = this.closeModal.bind(this);
   }
   componentDidMount() {
-    // this.setState({ dataArray })
     this.getAllLogs()
   }
 
@@ -55,28 +54,6 @@ class App extends Component {
     this.setState({
       open: modalName
     })
-    // switch (modalName) {
-    //   case "ApplicationSubmitted":
-    //     if (this.state.applicationSubmittedModal === true) {
-    //       break;
-    //     }
-    //     this.setState({ applicationSubmittedModal: true });
-    //     break;
-    //   case "ApplicationChallenged":
-    //     if (this.state.applicationChallengedModal === true) {
-    //       break;
-    //     }
-    //     this.setState({ applicationChallengedModal: true });
-    //     break;
-    //   case "ListingChallenged":
-    //     if (this.state.listingChallengedModal === true) {
-    //       break;
-    //     }
-    //     this.setState({ listingChallengedModal: true });
-    //     break;
-    //   default:
-    //     console.log("No Modal");
-    // }
   }
 
   afterOpenModal() {
@@ -88,18 +65,10 @@ class App extends Component {
     this.setState({
       applicationSubmittedModal: false,
       applicationChallengedModal: false,
-      listingChallengedModal: false
+      listingChallengedModal: false,  
+      open: false,
     });
   }
-
-  /*<Button color = "primary" onClick={() => this.openModal('ApplicationSubmitted')}>ApplicationSubmitted</Button>
-      <Button color = "warning"onClick={() => this.openModal('ApplicationChallenged')}>ApplicationChallenged</Button>
-      <Button color = "danger" onClick={() => this.openModal('ListingChallenged')}>ListingChallenged</Button>
-      <Button ><Router><Link to="/">Close</Link></Router></Button>
-      <Router>
-      <Button><a href="https://etherscan.io">Etherscan</a></Button>
-      </Router>
-      <Button><Router><Link to="/Home">Home</Link></Router></Button>*/
 
   getModal(modalType, amountStaked, Status) {
     switch (modalType) {
@@ -194,7 +163,7 @@ class App extends Component {
     const sortedEvents = this.sortLogData(events)
     console.log('sortedEvents:', sortedEvents)
     this.setState({
-      dataArray: sortedEvents
+      addressBalances: sortedEvents
     })
   }
 
@@ -235,22 +204,23 @@ class App extends Component {
     });
   }
 
-  getLeaderboardItem(dataArray) {
-    let iterator = 0;
+  getLeaderboardItem = addressBalances  =>  {
     let a = [];
-    while (iterator < dataArray.length) {
-      let leaderboardAddress = dataArray[iterator].address;
-      let netChange = dataArray[iterator].balance;
-      //let percentGain = netChange/eth.getBalance(leaderboardAddress);
-      a[iterator] = (
+    for(let i in addressBalances) {
+      let leaderboardAddress = addressBalances[i].address;
+      let netChange = Math.round(addressBalances[i].balance / 1000000000000000000);
+      // let bal = token.balanceOf(leaderboardAddress); 
+      // console.log(bal, '---------------------------');
+      let percentGain = 420;
+      let rank = parseInt(i, 10) + 1; 
+      a[i] = (
         <tr>
-          <th scope="row">{iterator + 1}</th>
+	  <th scope="row">{rank}</th>
           <td>{leaderboardAddress}</td>
-          <td>percentGain</td>
+          <td>{percentGain}</td>
           <td>{netChange}</td>
         </tr>
       );
-      iterator = iterator + 1;
     }
     return a;
   }
@@ -260,7 +230,7 @@ class App extends Component {
       <div>
         <Button
           color="primary"
-          onClick={() => this.openModal("ApplicationSubmitted")}
+          onClick={() => this.setState({open: 'ApplicationSubmitted'})}
         >
           ApplicationSubmitted
         </Button>
@@ -276,21 +246,6 @@ class App extends Component {
         >
           ListingChallenged
         </Button>
-        <Button>
-          <Router>
-            <Link to="/">Close</Link>
-          </Router>
-        </Button>
-        <Router>
-          <Button>
-            <a href="https://etherscan.io">Etherscan</a>
-          </Button>
-        </Router>
-        <Button>
-          <Router>
-            <Link to="/Home">Home</Link>
-          </Router>
-        </Button>
         <TableWrapper>
           <Table dark>
             <thead>
@@ -303,20 +258,7 @@ class App extends Component {
             </thead>
 
             <tbody>
-              {this.getLeaderboardItem(this.state.dataArray)}
-
-              <tr>
-                <th scope="row">4</th>
-                <td>Kareem</td>
-                <td>20%</td>
-                <td>100</td>
-              </tr>
-              <tr>
-                <th scope="row">5</th>
-                <td>Nigel</td>
-                <td>-5%</td>
-                <td>-10000000</td>
-              </tr>
+              {this.getLeaderboardItem(this.state.addressBalances)}
             </tbody>
           </Table>
         </TableWrapper>

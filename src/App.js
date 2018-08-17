@@ -13,6 +13,9 @@ import BN from "bn.js";
 
 const Eth = require("ethjs");
 const eth = new Eth(new Eth.HttpProvider("localhost:3000"));
+const contract = eth.contract(Token.abi);
+const tokenAddr = '0x73064ef6b8aa6d7a61da0eb45e53117718a3e891';
+const ONE_WEEK = 604800;
 
 const customStyles = {
   content: {
@@ -40,6 +43,7 @@ class App extends Component {
       listingChallengedModal: false,
       addressBalances: [],
       open: false,
+      table: [],
     };
 
     this.openModal = this.openModal.bind(this);
@@ -47,7 +51,8 @@ class App extends Component {
     this.closeModal = this.closeModal.bind(this);
   }
   componentDidMount() {
-    this.getAllLogs()
+    await this.getAllLogs();
+    await this.getLeaderboardItem(this.state.addressBalances);
   }
 
   openModal(modalName) {
@@ -65,7 +70,7 @@ class App extends Component {
     this.setState({
       applicationSubmittedModal: false,
       applicationChallengedModal: false,
-      listingChallengedModal: false,  
+      listingChallengedModal: false,
       open: false,
     });
   }
@@ -170,128 +175,133 @@ class App extends Component {
   handleTokenTransfers = logs => {
     let addressBalances = {};
 
-    logs.forEach(({ logData }) => {
-      if (
-        addressBalances.hasOwnProperty(logData._to) &&
-        addressBalances.hasOwnProperty(logData._from)
-      ) {
-        addressBalances[logData._to] = new BN(addressBalances[logData._to])
-          .add(logData._value)
-          .toString();
-        addressBalances[logData._from] = new BN(addressBalances[logData._from])
-          .sub(logData._value)
-          .toString();
-      } else if (
-        !addressBalances.hasOwnProperty(logData._to) &&
-        addressBalances.hasOwnProperty(logData._from)
-      ) {
-        addressBalances[logData._to] = logData._value.toString();
-        addressBalances[logData._from] = new BN(addressBalances[logData._from])
-          .sub(logData._value)
-          .toString();
-      } else {
-        addressBalances[logData._to] = logData._value.toString();
-        addressBalances[logData._from] = logData._value.toString();
+    const currentTime = parseInt(Date.now() / 1000, 10);
+    logs.forEach(({ logData, txData }) => {
+      if (parseInt(txData.blockTimestamp, 10) > (currentTime - ONE_WEEK)) {
+        if (
+          addressBalances.hasOwnProperty(logData._to) &&
+          addressBalances.hasOwnProperty(logData._from)
+        ) {
+          addressBalances[logData._to] = new BN(addressBalances[logData._to])
+            .add(logData._value)
+            .toString();
+          addressBalances[logData._from] = new BN(addressBalances[logData._from])
+            .sub(logData._value)
+            .toString();
+        } else if (
+          !addressBalances.hasOwnProperty(logData._to) &&
+          addressBalances.hasOwnProperty(logData._from)
+        ) {
+          addressBalances[logData._to] = logData._value.toString();
+          addressBalances[logData._from] = new BN(addressBalances[logData._from])
+            .sub(logData._value)
+            .toString();
+        } else {
+          addressBalances[logData._to] = logData._value.toString();
+          addressBalances[logData._from] = logData._value.toString();
+        }
       }
     });
 
-    return addressBalances;
-  };
+      return addressBalances;
+    };
 
-  sortLogData = (addressBalances) => {
-    return addressBalances.sort((addrBal1, addrBal2) => {
-      return addrBal2.balance - addrBal1.balance;
-    });
-  }
+    sortLogData = (addressBalances) => {
+      return addressBalances.sort((addrBal1, addrBal2) => {
+        return addrBal2.balance - addrBal1.balance;
+      });
+    }
 
-  getLeaderboardItem = addressBalances  =>  {
-    let a = [];
-    for(let i in addressBalances) {
-      let leaderboardAddress = addressBalances[i].address;
-      let netChange = Math.round(addressBalances[i].balance / 1000000000000000000);
-      // let bal = token.balanceOf(leaderboardAddress); 
-      // console.log(bal, '---------------------------');
-      let percentGain = 420;
-      let rank = parseInt(i, 10) + 1; 
-      a[i] = (
-        <tr>
-	  <th scope="row">{rank}</th>
-          <td>{leaderboardAddress}</td>
-          <td>{percentGain}</td>
-          <td>{netChange}</td>
-        </tr>
+    getLeaderboardItem = addressBalances => {
+      let a = [];
+      for (let i in addressBalances) {
+        let leaderboardAddress = addressBalances[i].address;
+        let netChange = Math.round(addressBalances[i].balance / 1000000000000000000);
+        // let bal = token.balanceOf(leaderboardAddress); 
+        // console.log(bal, '---------------------------');
+        const eip20 = await contract.at(tokenAddr)
+        let bal = parseInt((await eip20.balanceOf(leaderboardAddress)).balance.toString(), 10);
+        let percentGain = netChange / (bal - netChange) * 100;
+        let rank = parseInt(i, 10) + 1;
+        a[i] = (
+          <tr>
+            <th scope="row">{rank}</th>
+            <td>{leaderboardAddress}</td>
+            <td>{percentGain}</td>
+            <td>{netChange}</td>
+          </tr>
+        );
+      }
+      this.setState({ table: a });
+    }
+
+    render() {
+      return (
+        <div>
+          <Button
+            color="primary"
+            onClick={() => this.setState({ open: 'ApplicationSubmitted' })}
+          >
+            ApplicationSubmitted
+        </Button>
+          <Button
+            color="warning"
+            onClick={() => this.openModal("ApplicationChallenged")}
+          >
+            ApplicationChallenged
+        </Button>
+          <Button
+            color="danger"
+            onClick={() => this.openModal("ListingChallenged")}
+          >
+            ListingChallenged
+        </Button>
+          <TableWrapper>
+            <Table dark>
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Address</th>
+                  <th>% Growth</th>
+                  <th>Token Growth</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {this.state.table}
+              </tbody>
+            </Table>
+          </TableWrapper>
+
+          <Modal
+            isOpen={this.state.open === 'ApplicationSubmitted'}
+            onAfterOpen={this.afterOpenModal}
+            onRequestClose={this.closeModal}
+            style={customStyles}
+            contentLabel="ApplicationSubmitted Modal"
+          >
+            <h2 ref={subtitle => (this.subtitle = subtitle)}>
+              Application `ApplicationName` Submitted
+          </h2>
+            <div>
+              Details:
+            <ul>Amount Staked: </ul>
+              <ul>Application Status: </ul>
+            </div>
+            <form>
+              <button onClick={this.closeModal}>
+                <Router>
+                  <Link to="/Application">View Application</Link>
+                </Router>
+              </button>
+            </form>
+            <button onClick={this.closeModal} color={"Tomato"}>
+              Close
+          </button>
+          </Modal>
+        </div>
       );
     }
-    return a;
   }
 
-  render() {
-    return (
-      <div>
-        <Button
-          color="primary"
-          onClick={() => this.setState({open: 'ApplicationSubmitted'})}
-        >
-          ApplicationSubmitted
-        </Button>
-        <Button
-          color="warning"
-          onClick={() => this.openModal("ApplicationChallenged")}
-        >
-          ApplicationChallenged
-        </Button>
-        <Button
-          color="danger"
-          onClick={() => this.openModal("ListingChallenged")}
-        >
-          ListingChallenged
-        </Button>
-        <TableWrapper>
-          <Table dark>
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Address</th>
-                <th>% Growth</th>
-                <th>Token Growth</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {this.getLeaderboardItem(this.state.addressBalances)}
-            </tbody>
-          </Table>
-        </TableWrapper>
-
-        <Modal
-          isOpen={this.state.open === 'ApplicationSubmitted'}
-          onAfterOpen={this.afterOpenModal}
-          onRequestClose={this.closeModal}
-          style={customStyles}
-          contentLabel="ApplicationSubmitted Modal"
-        >
-          <h2 ref={subtitle => (this.subtitle = subtitle)}>
-            Application `ApplicationName` Submitted
-          </h2>
-          <div>
-            Details:
-            <ul>Amount Staked: </ul>
-            <ul>Application Status: </ul>
-          </div>
-          <form>
-            <button onClick={this.closeModal}>
-              <Router>
-                <Link to="/Application">View Application</Link>
-              </Router>
-            </button>
-          </form>
-          <button onClick={this.closeModal} color={"Tomato"}>
-            Close
-          </button>
-        </Modal>
-      </div>
-    );
-  }
-}
-
-export default App;
+  export default App;
